@@ -9,12 +9,13 @@ set -eo pipefail
 CROSS_ROOT="${CROSS_ROOT:-/opt/cross}"
 STAGE_ROOT="${STAGE_ROOT:-/opt/stage}"
 BUILD_ROOT="${BUILD_ROOT:-/opt/build}"
+BUILD_TARGET=$1
 
 ZLIB_VERSION="${ZLIB_VERSION:-1.2.11}"
 JSON_C_VERSION="${JSON_C_VERSION:-0.13.1}"
-OPENSSL_VERSION="${OPENSSL_VERSION:-1.0.2u}"
+OPENSSL_VERSION="${OPENSSL_VERSION:-1.1.1f}"
 LIBUV_VERSION="${LIBUV_VERSION:-1.34.2}"
-LIBWEBSOCKETS_VERSION="${LIBWEBSOCKETS_VERSION:-3.2.2}"
+LIBWEBSOCKETS_VERSION="${LIBWEBSOCKETS_VERSION:-4.0.1}"
 
 build_zlib() {
 	echo "=== Building zlib-${ZLIB_VERSION} (${TARGET})..."
@@ -34,14 +35,25 @@ build_json-c() {
 	popd
 }
 
+openssl_target() {
+  case $1 in
+    i386) echo linux-generic32 ;;
+    x86_64) echo linux-x86_64 ;;
+    arm|armhf) echo linux-armv4 ;;
+    aarch64) echo linux-aarch64 ;;
+    mips|mipsel) echo linux-mips32 ;;
+    *)
+      echo "unsupported target: $1" && exit 1
+  esac
+}
+
 build_openssl() {
 	echo "=== Building openssl-${OPENSSL_VERSION} (${TARGET})..."
 	curl -sLo- https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz | tar xz -C ${BUILD_DIR}
 	pushd ${BUILD_DIR}/openssl-${OPENSSL_VERSION}
-		env CC=${TARGET}-gcc AR=${TARGET}-ar RANLIB=${TARGET}-ranlib C_INCLUDE_PATH=${STAGE_DIR}/include \
-			./Configure dist -fPIC --prefix=/ --install_prefix=${STAGE_DIR}
-		make -j4 > /dev/null
-		make install_sw
+		env CC=gcc CROSS_COMPILE=${TARGET}- CFLAGS="-fPIC -latomic" \
+			./Configure $(openssl_target $BUILD_TARGET) --prefix=${STAGE_DIR} \
+		&& make -j4 all > /dev/null && make install_sw
 	popd
 }
 
@@ -66,6 +78,7 @@ set(CMAKE_FIND_ROOT_PATH "${STAGE_DIR}")
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+set(OPENSSL_USE_STATIC_LIBS TRUE)
 EOF
 }
 
@@ -124,7 +137,7 @@ build() {
 	build_ttyd
 }
 
-case $1 in
+case $BUILD_TARGET in
   i386|x86_64|aarch64|mips|mipsel)
     build $1-linux-musl $1
     ;;
