@@ -1,9 +1,5 @@
 #!/bin/bash
-#
-# This script should be run inside the tsl0922/musl-cross docker image
-# Example:
-#         docker run --rm -v $(pwd):/ttyd -w /ttyd tsl0922/musl-cross ./scripts/cross-build.sh mips
-#
+
 set -eo pipefail
 
 CROSS_ROOT="${CROSS_ROOT:-/opt/cross}"
@@ -121,7 +117,11 @@ build() {
 	STAGE_DIR="${STAGE_ROOT}/${TARGET}"
 	BUILD_DIR="${BUILD_ROOT}/${TARGET}"
 
-	echo "=== Building target ${ALIAS} (${TARGET})..."
+  echo "=== Installing toolchain ${ALIAS} (${TARGET})..."
+  mkdir -p ${CROSS_ROOT} && export PATH=${PATH}:/opt/cross/bin
+  curl -sLo- http://musl.cc/${TARGET}-cross.tgz | tar xz -C ${CROSS_ROOT} --strip-components 1
+
+  echo "=== Building target ${ALIAS} (${TARGET})..."
 
   rm -rf ${STAGE_DIR} ${BUILD_DIR}
 	mkdir -p ${STAGE_DIR} ${BUILD_DIR}
@@ -138,7 +138,7 @@ build() {
 }
 
 case $BUILD_TARGET in
-  i386|x86_64|aarch64|mips|mipsel)
+  i386|x86_64|aarch64|mips|mipsel|mips64|mips64el)
     build $1-linux-musl $1
     ;;
   arm)
@@ -148,5 +148,5 @@ case $BUILD_TARGET in
     build arm-linux-musleabihf $1
     ;;
   *)
-    echo "usage: $0 i386|x86_64|arm|armhf|aarch64|mips|mipsel" && exit 1
+    echo "usage: $0 i386|x86_64|arm|armhf|aarch64|mips|mipsel|mips64|mips64el" && exit 1
 esac

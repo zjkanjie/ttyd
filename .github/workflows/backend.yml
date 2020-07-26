@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-16.04
     strategy:
       matrix:
-        lws-version: [4.0.1, 3.2.2, 2.4.2]
+        lws-version: [4.0.20, 3.2.2, 2.4.2]
     steps:
       - name: Install packages
         run: |
@@ -44,13 +44,17 @@ jobs:
     runs-on: ubuntu-16.04
     strategy:
       matrix:
-        arch: [i386, x86_64, arm, armhf, aarch64, mips, mipsel]
+        arch: [i386, x86_64, arm, armhf, aarch64, mips, mipsel, mips64, mips64el]
     steps:
       - uses: actions/checkout@v1
+      - name: Install packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y autoconf automake build-essential cmake curl file libtool
       - name: Cross build (${{ matrix.arch }})
         env:
           ARCH: ${{ matrix.arch }}
-        run: docker run --rm -v $(pwd):/ttyd -w /ttyd tsl0922/musl-cross ./scripts/cross-build.sh $ARCH
+        run: ./scripts/cross-build.sh $ARCH
       - uses: actions/upload-artifact@v1
         with:
           name: ttyd.${{ matrix.arch }}

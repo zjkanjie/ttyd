@@ -10,11 +10,15 @@ jobs:
     runs-on: ubuntu-16.04
     steps:
       - uses: actions/checkout@v1
+      - name: Install packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y autoconf automake build-essential cmake curl file libtool
       - name: Build Release
         run: |
           mkdir -p bin
           for arch in i386 x86_64 arm armhf aarch64 mips mipsel; do
-            docker run --rm -v $(pwd):/ttyd -w /ttyd tsl0922/musl-cross ./scripts/cross-build.sh $arch
+            ./scripts/cross-build.sh $arch
             cp build/ttyd bin/ttyd_linux.$arch
             sha256sum bin/ttyd_linux.$arch >> bin/SHA256SUMS
           done
